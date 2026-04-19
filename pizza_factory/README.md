@@ -1,150 +1,129 @@
-# 🍕 Pizza Distributed System – README
+# 🍕 Distributed Pizza Production System
 
-## 📌 Description du projet
+## 📌 Project Overview
 
-Ce projet consiste à implémenter un **agent distribué en Rust** capable de s’intégrer dans une chaîne de production de pizzas.
+This project implements a **distributed pizza production system** in Rust.
+The system simulates a network of agents collaborating to produce pizzas based on predefined recipes.
 
-Le système repose sur plusieurs nœuds (agents) qui collaborent pour produire une pizza en exécutant différentes étapes (capabilities).
-
-Le projet inclut :
-
-* un **agent personnalisé**
-* un **client**
-* une interaction avec le **binaire fourni (pizza_factory)**
+Each agent is responsible for a subset of capabilities (e.g., dough preparation, topping, baking) and communicates with others using a network protocol.
 
 ---
 
-## 🧠 Principe général
+## 🎯 Objectives
 
-Le système fonctionne selon une architecture distribuée :
+* Reverse-engineer an undocumented network protocol
+* Implement a **custom agent** compatible with an existing system
+* Develop a **client-server architecture using TCP**
+* Support **dynamic recipe handling using a DSL**
+* Apply Rust concepts: ownership, concurrency, networking
+
+---
+
+## 🧠 System Architecture
 
 ```text
-Client → Réseau → Agent(s) → Production → Réponse
+Client → pizza_factory → Agent(s) → Processing → Response
 ```
 
-Chaque agent :
+### Components:
 
-* reçoit une requête
-* traite ou délègue la tâche
-* renvoie une réponse
-
-Le produit (pizza) est représenté par une **chaîne de caractères modifiée à chaque étape**.
+| Component                      | Description                                        |
+| ------------------------------ | -------------------------------------------------- |
+| **pizza_factory**              | Provided binary simulating the distributed network |
+| **Agent (our implementation)** | Handles requests and processes recipes             |
+| **Client**                     | Sends commands to the network                      |
+| **Protocol**                   | Defines message structures (Request / Response)    |
+| **Handler**                    | Contains business logic for processing recipes     |
 
 ---
 
-## 🏗 Structure du projet
+## 📂 Project Structure
 
 ```text
-pizza_agent/
-├── src/
-│   ├── main.rs        # Serveur (agent TCP)
-│   ├── client.rs      # Client TCP
-│   ├── protocol.rs    # Définition des messages (Request / Response)
-│   ├── handler.rs     # Logique métier (traitement des commandes)
+Pizza_project/
 │
-├── Cargo.toml
+├── pizza_agent/
+│   ├── src/
+│   │   ├── main.rs        # TCP server (agent)
+│   │   ├── client.rs      # Client implementation
+│   │   ├── handler.rs     # Business logic
+│   │   ├── protocol.rs    # Message definitions
+│   ├── Cargo.toml
+│
+├── pizza_factory/
+│   ├── recipes/
+│   │   └── examples.recipes
+│
+└── README.md
 ```
-
----
-
-## 📂 Description des fichiers
-
-### 🔹 main.rs (Agent)
-
-* Lance un serveur TCP (port 9000)
-* Reçoit les requêtes réseau
-* Décode les messages CBOR
-* Appelle `handler.rs`
-* Renvoie une réponse
-
-👉 Rôle :
-
-```text
-Gestion réseau (réception / envoi)
-```
-
----
-
-### 🔹 client.rs
-
-* Se connecte à un agent
-* Envoie une requête (`Order`)
-* Affiche la réponse
-
-👉 Rôle :
-
-```text
-Tester le système
-```
-
----
-
-### 🔹 protocol.rs
-
-* Définit les structures :
-
-  * `Request`
-  * `Response`
-* Utilise `serde` pour la sérialisation
-
-👉 Rôle :
-
-```text
-Modélisation des messages réseau
-```
-
----
-
-### 🔹 handler.rs
-
-* Contient la logique métier
-* Traite les recettes (ex: Margherita)
-* Simule les étapes de production
-
-👉 Exemple :
-
-```text
-Dough → Base → Cheese → Bake
-```
-
-👉 Rôle :
-
-```text
-Traitement des commandes (logique métier)
-```
-
----
-
-## 🔌 Technologies utilisées
-
-* Rust
-* TCP (communication réseau)
-* CBOR (sérialisation binaire via `ciborium`)
-* Serde
 
 ---
 
 ## 🔍 Reverse Engineering
 
-Le protocole n’étant pas documenté, nous avons utilisé :
+Since the protocol was not documented, we analyzed network traffic using:
 
 * Wireshark
 * tcpdump
 
-Nous avons identifié :
+### Findings:
 
-* transport en TCP (port 8000)
-* messages encodés en CBOR
-* framing : taille + message
+* Communication via **TCP**
+* Messages encoded in **CBOR format**
+* Use of **framing**:
+
+```text
+[message length (4 bytes)] + [CBOR payload]
+```
 
 ---
 
-## 🚀 Lancer le projet
+## 🍕 Recipe System (DSL)
 
-### 🟢 1. Lancer le serveur principal
+Recipes are defined in a Domain Specific Language:
+
+```text
+Margherita =
+    MakeDough
+    -> AddBase(base_type=tomato)
+    -> [AddCheese(amount=2), AddBasil(leaves=3)]
+    -> Bake(duration=5)
+```
+
+### Implementation
+
+We implemented:
+
+* Dynamic loading of recipes from file
+* Parsing of recipe names
+* Support for multiple pizzas without hardcoding
+
+---
+
+## ⚙️ Agent Behavior
+
+The agent:
+
+* Listens on TCP (`127.0.0.1:9000`)
+* Receives CBOR-encoded requests
+* Processes known recipes
+* Returns structured responses
+
+If a recipe is unknown:
+
+```text
+Forwarded to another agent (simulated)
+```
+
+---
+
+## 🚀 How to Run the Project
+
+### 1️⃣ Start the pizza factory
 
 ```bash
-cd ~/pizza-project/archive-2026-03-01T12:59:55/aarch64-apple-darwin
+cd archive-2026-03-01T12:59:55/aarch64-apple-darwin
+chmod +x pizza_factory
 
 ./pizza_factory start \
 --recipes-file ~/pizza-project/pizza_factory/recipes/examples.recipes \
@@ -153,7 +132,7 @@ cd ~/pizza-project/archive-2026-03-01T12:59:55/aarch64-apple-darwin
 
 ---
 
-### 🟣 2. Lancer notre agent
+### 2️⃣ Start the agent
 
 ```bash
 cd ~/pizza-project/pizza_agent
@@ -162,7 +141,7 @@ cargo run --bin pizza_agent
 
 ---
 
-### 🔵 3. Tester avec le client officiel
+### 3️⃣ Send a request
 
 ```bash
 ./pizza_factory client --peer 127.0.0.1:8000 order Margherita
@@ -170,95 +149,99 @@ cargo run --bin pizza_agent
 
 ---
 
-## 🧪 Tests réalisés
-
-✔ Communication client ↔ agent
-✔ Décodage CBOR
-✔ Production de pizza
-✔ Gestion des erreurs
-✔ Retry / timeout
-
----
-
-## 🍕 Capabilities
-
-Le système repose sur des étapes de production :
-
-* MakeDough
-* AddBase
-* AddCheese
-* AddBasil
-* Bake
-* AddOliveOil
-
-Si une capability est absente → erreur :
+## ✅ Expected Output
 
 ```text
-Action AddBasil not available
+Order completed successfully
+```
+
+Example processing:
+
+```text
+Dough prepared
+Base added
+Cheese added
+Basil added
+Baked
 ```
 
 ---
 
-## 🔄 Logique distribuée
+## 🧪 Testing Strategy
 
-* Si une action n’est pas disponible → la production échoue
-* Notre agent simule un **forward** vers un autre agent
+We validated:
 
----
-
-## 🧱 Architecture logicielle
-
-Nous avons séparé :
-
-```text
-main.rs     → réseau
-handler.rs  → logique métier
-```
-
-👉 Cela permet :
-
-* code plus lisible
-* meilleure maintenabilité
+* TCP communication (client ↔ agent)
+* CBOR serialization/deserialization
+* Dynamic recipe handling
+* Error cases (missing capability)
+* Multi-recipe support
 
 ---
 
-## 🛡 Gestion des erreurs
+## 🛡 Error Handling & Improvements
 
-Améliorations apportées :
+* Removed unsafe `unwrap()` usage
+* Added timeout handling
+* Implemented retry logic
+* Improved logging for debugging
 
-* suppression des `unwrap()`
-* gestion des erreurs explicite
-* ajout de timeouts réseau
-* retry côté client
+---
+
+## 🤝 Collaboration Workflow
+
+We used Git with a structured workflow:
+
+* `main` → stable version
+* `develop` → ongoing development
+
+### Contributions:
+
+* **Sohaila**:
+
+  * Agent implementation
+  * TCP handling
+  * DSL parsing
+
+* **Teammate**:
+
+  * Client implementation
+  * Protocol design
 
 ---
 
 ## ⚠️ Limitations
 
-* Pas de protocole Gossip implémenté
-* Pas de routage réel entre agents
-* Forward simulé uniquement
+* No real distributed routing between agents
+* Forwarding is simulated
+* Partial DSL parsing (names only)
 
 ---
 
-## 🚀 Améliorations possibles
+## 🚀 Future Improvements
 
-* découverte automatique des agents (UDP / Gossip)
-* routage intelligent
-* dashboard de suivi
-* multi-agents réels
-
----
-
-## ✅ Conclusion
-
-Ce projet démontre :
-
-* la compréhension d’un protocole réseau
-* l’implémentation d’un agent distribué
-* la communication en TCP avec sérialisation CBOR
-
-Le système est fonctionnel et compatible avec le binaire fourni.
+* Full DSL execution (step-by-step actions)
+* Real peer-to-peer communication
+* Gossip protocol implementation
+* Load balancing between agents
+* Monitoring dashboard
 
 ---
 
+## 🏁 Conclusion
+
+This project demonstrates:
+
+* Distributed system design
+* Network protocol analysis
+* Low-level TCP communication
+* Modular Rust architecture
+
+It provides a functional agent capable of integrating into an existing distributed network.
+
+---
+
+## 👩‍💻 Author
+
+* Sohaila
+* Adham
